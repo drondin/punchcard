@@ -7,4 +7,4 @@ reports:
 compiler:
   solc:
     remappings:
-      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.1.0"
+      - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.2.0"
