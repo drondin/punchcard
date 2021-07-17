@@ -3,6 +3,7 @@ import './App.css'
 import {getWeb3} from "./getWeb3"
 import map from "./artifacts/deployments/map.json"
 import {getEthereum} from "./getEthereum"
+import Select from 'react-select'
 
 class App extends Component {
 
@@ -14,7 +15,9 @@ class App extends Component {
         mintedFree: false,
         nOwnedPunchcards: 0,
         ownedPunchcards: [],
-        mintValue: 1
+        mintValue: 1,
+        contentValue: "",
+        selectedPunchcard: null
     }
 
     componentDidMount = async () => {
@@ -61,7 +64,14 @@ class App extends Component {
 
         for (let i = 0; i < nOwnedPunchcards; i++) {
             const nftID = await punchcard.methods.tokenOfOwnerByIndex(accounts[0], i).call({from: accounts[0]})
-            ownedPunchcards.push(nftID)
+            const nftContent = await punchcard.methods.getContent(i).call({from: accounts[0]})
+            const nftContentSet = await punchcard.methods.contentIsSet(i).call({from: accounts[0]})
+
+            ownedPunchcards.push({
+                id: nftID,
+                content: nftContent,
+                isSet: nftContentSet
+            })
         };
 
         this.setState({
@@ -138,14 +148,26 @@ class App extends Component {
             })
     }
 
+    setContent = async (e) => {
+        const {accounts, punchcard, contentValue, selectedPunchcard} = this.state
+        e.preventDefault()
+        await punchcard.methods.setContent(selectedPunchcard, contentValue).send({from: accounts[0]})
+            .on('receipt', async () => {
+                console.log("content set")
+                this.loadData()
+                this.setState({
+                    contentValue: "",
+                    selectedPunchcard: null
+                })
+            })
+    }
+
     render() {
         const {
             web3, accounts, chainid,
             punchcard, mintedFree, nOwnedPunchcards, ownedPunchcards,
-            mintValue
+            mintValue,contentValue,selectedPunchcard
         } = this.state
-
-        debugger;
 
         if (!web3) {
             return <div>Loading Web3, accounts, and contracts...</div>
@@ -158,8 +180,15 @@ class App extends Component {
         if (!punchcard) {
             return <div>Could not find a deployed contract. Check console for details.</div>
         }
+        
+        const punchcardList = ownedPunchcards.map((d) => <li key={d.id}>{d.id} - {d.content}</li>);
+        const emptyPunchcards = ownedPunchcards.filter(function(p){
+            return !p.isSet;
+        });
+        const emptyPunchcardList = emptyPunchcards.map((d) => {
+            return { value: d.id, label: d.id }
+        });
 
-        const punchcardList = ownedPunchcards.map((d) => <li key={d}>{d}</li>);
         const isAccountsUnlocked = accounts ? accounts.length > 0 : false
 
         return (<div className="App">
@@ -197,6 +226,23 @@ class App extends Component {
                     />
                     <br/>
                     <button type="submit" disabled={!isAccountsUnlocked}>Mint {mintValue} punchcards</button>
+
+                </div>
+            </form>
+            <form onSubmit={(e) => this.setContent(e)}>
+                <div>
+                    <label>Set Content: </label>
+                    <br/>
+                    <Select options={emptyPunchcardList} onChange={(e) => this.setState({selectedPunchcard: e.value})} />
+                    <br/>
+                    <input
+                        name="contentValue"
+                        type="string"
+                        value={contentValue}
+                        onChange={(e) => this.setState({contentValue: e.target.value})}
+                    />
+                    <br/>
+                    <button type="submit" disabled={!isAccountsUnlocked}>Set value {contentValue} to punchard {selectedPunchcard}</button>
 
                 </div>
             </form>
