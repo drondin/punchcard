@@ -1,6 +1,5 @@
 #!/usr/bin/python3
 
-import pytest
 import brownie
 
 def test_freemint(punchcard, accounts):
@@ -8,7 +7,7 @@ def test_freemint(punchcard, accounts):
     assert punchcard.balanceOf(accounts[0]) == 1
 
 def test_freemintEnded(freeexpired_punchcard, accounts):
-    with pytest.raises(ValueError):
+    with brownie.reverts("Free mint period has ended"):
         freeexpired_punchcard.claimFreeToken({'from': accounts[0]})
 
 def test_freemint(punchcard, accounts):
@@ -26,11 +25,11 @@ def test_setContentAlreadyBurned(punchcard, accounts):
     punchcard.claimFreeToken({'from': accounts[0]})
     tokenId = punchcard.tokenOfOwnerByIndex(accounts[0], 0)
     punchcard.setContent(tokenId, "test")
-    with pytest.raises(ValueError):
+    with brownie.reverts("Content is already burned"):
         punchcard.setContent(tokenId, "test2")
 
 def test_setContentOther(punchcard, accounts):
     punchcard.claimFreeToken({'from': accounts[0]})
     tokenId = punchcard.tokenOfOwnerByIndex(accounts[0], 0)
-    with pytest.raises(ValueError):
+    with brownie.reverts("Caller is not owner"):
         punchcard.setContent(tokenId, "test", {'from': accounts[1]})
