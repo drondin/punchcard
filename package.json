@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "ipfs-http-client": "^50.1.2",
+    "react-loader-spinner": "^4.0.0",
+    "react-metamask-login-button": "^1.0.18"
+  }
+}

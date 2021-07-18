@@ -1,7 +1,6 @@
 __pycache__
 .history
 .hypothesis/
-build/
 reports/
 .pytest_cache
 client/src/artifacts
