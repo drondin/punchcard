@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 
 import pytest
-import time
-
 
 @pytest.fixture(scope="function", autouse=True)
 def isolate(fn_isolation):
@@ -13,9 +11,4 @@ def isolate(fn_isolation):
 
 @pytest.fixture(scope="module")
 def punchcard(Punchcard, accounts):
-    return Punchcard.deploy(time.time(), "https://google.es", {'from': accounts[0]})
-
-
-@pytest.fixture(scope="module")
-def freeexpired_punchcard(Punchcard, accounts):
-    return Punchcard.deploy(time.time()-(24*60*60)-(100), "https://google.es", {'from': accounts[0]})
+    return Punchcard.deploy("https://google.es", {'from': accounts[0]})

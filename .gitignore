@@ -4,3 +4,5 @@ __pycache__
 reports/
 .pytest_cache
 client/src/artifacts
+# Local Netlify folder
+.netlify

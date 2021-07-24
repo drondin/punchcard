@@ -9,7 +9,7 @@ project_structure:
     build: client/src/artifacts
 
 networks:
-  default: development
+  default: mumbai
   development:
     cmd_settings:
       mnemonic: hill law jazz limb penalty escape public dish stand bracket blue jar

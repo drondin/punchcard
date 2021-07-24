@@ -13,7 +13,6 @@ import {
   Icon,
   Sprite,
 } from "nes-react";
-import Loader from "react-loader-spinner";
 
 import Row from "./Row";
 import Col from "./Col";
@@ -32,13 +31,21 @@ class App extends Component {
     contentValue: "",
     selectedPunchcard: null,
     ipfsBaseUri: null,
-    fileContent: null,
+    fileContent: "",
     sendAddress: null,
-    loading: false,
     walletConnected: false,
+    pendingTx: [],
   };
 
   componentDidMount = async () => {
+    if (typeof web3 === "undefined") {
+      console.log("not connected");
+    } else {
+      this.initApp();
+    }
+  };
+
+  initApp = async () => {
     // Get network provider and web3 instance.
     const web3 = await getWeb3();
     let walletConnected = false;
@@ -77,7 +84,7 @@ class App extends Component {
   };
 
   loadData = async () => {
-    const { accounts, punchcard, selectedPunchcard } = this.state;
+    const { accounts, punchcard, selectedPunchcard, ipfsBaseUri } = this.state;
 
     const mintedFree = await punchcard.methods
       .callerHasClaimedFreeToken()
@@ -95,10 +102,10 @@ class App extends Component {
         .tokenOfOwnerByIndex(accounts[0], i)
         .call({ from: accounts[0] });
       const nftContent = await punchcard.methods
-        .getContent(i)
+        .getContent(nftID)
         .call({ from: accounts[0] });
       const nftContentSet = await punchcard.methods
-        .contentIsSet(i)
+        .contentIsSet(nftID)
         .call({ from: accounts[0] });
 
       const newPunchcard = {
@@ -106,8 +113,18 @@ class App extends Component {
         content: nftContent,
         isSet: nftContentSet,
       };
-      if (initialPunchcard && initialPunchcard.id === nftID) {
+
+      if (initialPunchcard && initialPunchcard.id === newPunchcard.id) {
         initialPunchcard = newPunchcard;
+
+        fetch(ipfsBaseUri + newPunchcard.content)
+          .then((res) => res.text())
+          .then((result) => {
+            this.setState({
+              fileContent: result,
+            });
+          });
+
         found = true;
       }
       ownedPunchcards.push(newPunchcard);
@@ -127,7 +144,6 @@ class App extends Component {
       nOwnedPunchcards,
       ownedPunchcards,
       selectedPunchcard: initialPunchcard,
-      loading: false,
     });
   };
 
@@ -137,7 +153,9 @@ class App extends Component {
       return;
     }
 
-    const punchcard = await this.loadContract("dev", "Punchcard");
+    //mumbai
+    const punchcard = await this.loadContract("80001", "Punchcard");
+    //const punchcard = await this.loadContract("dev", "Punchcard");
 
     if (!punchcard) {
       return;
@@ -152,8 +170,8 @@ class App extends Component {
       ipfsBaseUri,
     });
 
-    if(this.state.accounts.length>0){
-        this.loadData();
+    if (this.state.accounts.length > 0) {
+      this.loadData();
     }
   };
 
@@ -189,90 +207,129 @@ class App extends Component {
   };
 
   mintFree = async (e) => {
-    const { accounts, punchcard } = this.state;
-    e.preventDefault();
+    const { accounts, punchcard, pendingTx } = this.state;
     await punchcard.methods
       .claimFreeToken()
       .send({ from: accounts[0] })
-      .on("receipt", async () => {
-        console.log("minted free");
+      .on("transactionHash", async (transactionHash) => {
+        let newPendingTx = pendingTx;
+
+        newPendingTx.push({
+          tx: transactionHash,
+          msg: "Minting free punchcard",
+        });
+
         this.setState({
-          mintValue: 1,
-          loading: true,
+          pendingTx: newPendingTx,
+        });
+      })
+      .on("receipt", async (receipt) => {
+        let newPendingTx = pendingTx.filter(function (itm) {
+          return itm.tx != receipt.transactionHash;
+        });
+
+        this.setState({
+          pendingTx: newPendingTx,
         });
         this.loadData();
       });
   };
 
   mintPunchcards = async (e) => {
-    const { accounts, punchcard, mintValue, web3 } = this.state;
-    e.preventDefault();
+    const { accounts, punchcard, mintValue, pendingTx, web3 } = this.state;
+
     await punchcard.methods
       .mintTokens(mintValue)
       .send({
         from: accounts[0],
         value: mintValue * web3.utils.toWei("0.01", "ether"),
       })
-      .on("receipt", async () => {
-        console.log("minted punchards");
+      .on("transactionHash", async (transactionHash) => {
+        let newPendingTx = pendingTx;
+
+        newPendingTx.push({
+          tx: transactionHash,
+          msg: "Minting punchcards",
+        });
+
         this.setState({
+          pendingTx: newPendingTx,
+        });
+      })
+      .on("receipt", async (receipt) => {
+        console.log("minted punchards");
+
+        let newPendingTx = pendingTx.filter(function (itm) {
+          return itm.tx != receipt.transactionHash;
+        });
+
+        this.setState({
+          pendingTx: newPendingTx,
           mintValue: 1,
-          loading: true,
         });
         this.loadData();
       });
   };
 
   sendPunchcard = async (e) => {
-    const {
-      accounts,
-      punchcard,
-      selectedPunchcard,
-      sendAddress,
-      ownedPunchcards,
-    } = this.state;
-    e.preventDefault();
+    const { accounts, punchcard, selectedPunchcard, pendingTx, sendAddress } = this.state;
+
     await punchcard.methods
       .transferFrom(accounts[0], sendAddress, selectedPunchcard.id)
       .send({ from: accounts[0] })
-      .on("receipt", async () => {
-        console.log("content set");
+      .on("transactionHash", async (transactionHash) => {
+        let newPendingTx = pendingTx;
+
+        newPendingTx.push({
+          tx: transactionHash,
+          msg: "Sending punchcard",
+        });
+
+        this.setState({
+          pendingTx: newPendingTx,
+        });
+      })
+      .on("receipt", async (receipt) => {
+        let newPendingTx = pendingTx.filter(function (itm) {
+          return itm.tx != receipt.transactionHash;
+        });
+
         this.setState({
           sendAddress: "",
-          loading: true,
+          pendingTx: newPendingTx
         });
         this.loadData();
       });
   };
 
   uploadTextIPFS = async (e) => {
-    const { ipfsclient, contentValue, accounts, punchcard, selectedPunchcard } =
+    const { ipfsclient, contentValue, accounts, punchcard, pendingTx, selectedPunchcard } =
       this.state;
     const ipfsCID = await ipfsclient.add(contentValue);
+
     await punchcard.methods
       .setContent(selectedPunchcard.id, ipfsCID.path)
       .send({ from: accounts[0] })
-      .on("receipt", async () => {
-        this.setState({
-          contentValue: "",
-          loading: true,
+      .on("transactionHash", async (transactionHash) => {
+        let newPendingTx = pendingTx;
+
+        newPendingTx.push({
+          tx: transactionHash,
+          msg: "Sending punchcard",
         });
-        this.loadData();
-      });
-  };
 
-  uploadFileIPFS = async (e) => {
-    const { ipfsclient, accounts, punchcard, selectedPunchcard, fileContent } =
-      this.state;
+        this.setState({
+          pendingTx: newPendingTx,
+        });
+      })
+      .on("receipt", async (receipt) => {
+        let newPendingTx = pendingTx.filter(function (itm) {
+          return itm.tx != receipt.transactionHash;
+        });
 
-    const ipfsCID = await ipfsclient.add(fileContent);
-    await punchcard.methods
-      .setContent(selectedPunchcard.id, ipfsCID.path)
-      .send({ from: accounts[0] })
-      .on("receipt", async () => {
         this.setState({
           contentValue: "",
-          loading: true,
+          pendingTx: newPendingTx
         });
         this.loadData();
       });
@@ -280,11 +337,9 @@ class App extends Component {
 
   render() {
     const {
-      web3,
       accounts,
-      chainid,
-      punchcard,
       mintedFree,
+      nOwnedPunchcards,
       ownedPunchcards,
       mintValue,
       contentValue,
@@ -292,53 +347,31 @@ class App extends Component {
       ipfsBaseUri,
       sendAddress,
       walletConnected,
+      fileContent,
+      pendingTx,
     } = this.state;
 
-    if (this.state.loading) {
-      return (
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-          }}
-        >
-          <Container rounded>
-            <Loader style={{marginLeft: "35px"}} type="TailSpin" color="#00BFFF" height={100} width={100} />
-
-            {accounts ? <strong>Connect with Metamask.</strong> : null}
-          </Container>
-        </div>
-      );
-    }
-
-    if (!web3) {
-      return <div>Loading Web3, accounts, and contracts...</div>;
-    }
-
-    if (isNaN(chainid) || chainid <= 42) {
-      return (
-        <div>
-          Wrong Network! Switch to your local RPC "Localhost: 8545" in your Web3
-          provider (e.g. Metamask)
-        </div>
-      );
-    }
-
-    if (!punchcard) {
-      return (
-        <div>
-          Could not find a deployed contract. Check console for details.
-        </div>
-      );
-    }
+    const transactionList = pendingTx.map((d) => (
+      <li key={d.tx}>
+        <a target="_blank" href={"https://etherscan.io/tx/" + d.tx}>{d.msg}</a>
+      </li>
+    ));
 
     const punchcardList = ownedPunchcards.map((d) => (
       <li
         key={d.id}
         onClick={(e) => {
           this.setState({ selectedPunchcard: d });
+
+          if (d.content) {
+            fetch(ipfsBaseUri + d.content)
+              .then((res) => res.text())
+              .then((result) => {
+                this.setState({
+                  fileContent: result,
+                });
+              });
+          }
         }}
         style={{ margin: "1rem", color: d === selectedPunchcard && "#007bff" }}
       >
@@ -369,16 +402,29 @@ class App extends Component {
           You ever wanted to send a message to another wallet or save a document
           forever? <br></br> <br></br> You are in the right place.{" "}
           <Icon icon="heart" />
+          <br></br>
+          <br></br>
+          Made by <a target="_blank" href="https://twitter.com/drondin0x">@drondin0x</a>{" "}
+          repository{" "}
+          <a target="_blank" href="https://github.com/drondin/punchcard">Punchcard</a>
         </Container>
         <br></br>
-        {(!walletConnected || accounts.length==0)? (
+        {!walletConnected || accounts.length == 0 ? (
           <Container rounded>
-            <strong>Connect with Metamask.</strong>
+            <Button success onClick={(e) => this.initApp()}>
+              Connect with Metamask.
+            </Button>
           </Container>
         ) : (
           <div>
             <Container rounded>
-              <strong>Connected with account {accounts[0]}.</strong>
+              <strong>
+                Connected with account{" "}
+                <a target="_blank" href={"https://etherscan.io/address/" + accounts[0]}>
+                  {" "}
+                  {accounts[0]}{" "}
+                </a>
+              </strong>
             </Container>
             <br></br>
             <Container rounded title="Mint Punchcard">
@@ -461,108 +507,92 @@ class App extends Component {
               </Row>
             </Container>
             <br></br>
-            <Row>
-              <Col>
-                <Container rounded title="My Punchcards">
-                  {punchcardList}
-                </Container>
-              </Col>
-              <Col>
-                <Container rounded title="Content">
-                  {selectedPunchcard && selectedPunchcard.content == false && (
-                    <TextArea
-                      value={contentValue}
-                      onChange={(e) =>
-                        this.setState({ contentValue: e.target.value })
-                      }
-                      rows="8"
-                    />
-                  )}
-                  <br></br>
-                  {selectedPunchcard && selectedPunchcard.content && (
-                    <div>
-                      <a
-                        href={ipfsBaseUri + selectedPunchcard.content}
-                        target="_blank"
-                      >
-                        IPFS URL
-                      </a>
-                      <br></br>
-                      <br></br>
-                      <span style={{ color: "orange" }}>
-                        Be careful with unknown links
-                      </span>
-                      <br></br>
-                      <br></br>
-                    </div>
-                  )}
-                  {selectedPunchcard && selectedPunchcard.isSet == false && (
-                    <div>
-                      <Button
-                        warning
-                        onClick={(e) =>
-                          selectedPunchcard.isSet == false &&
-                          this.uploadTextIPFS(e)
-                        }
-                        disabled={selectedPunchcard && selectedPunchcard.isSet}
-                      >
-                        Upload Text
-                      </Button>
-                      <br></br>
-                      <br></br>
-                      <span>------ or ------</span>
-                      <br></br>
-                      <br></br>
-                      <Row>
-                        <Col>
-                          <input
-                            type="file"
-                            onChange={(e) =>
-                              this.setState({ fileContent: e.target.files[0] })
-                            }
-                          />
-                        </Col>
-                        <Col>
-                          <Button
-                            warning
-                            style={{ "margin-top": "20px" }}
-                            onClick={(e) =>
-                              selectedPunchcard.isSet == false &&
-                              this.uploadFileIPFS(e)
-                            }
-                            disabled={
-                              selectedPunchcard && selectedPunchcard.isSet
-                            }
-                          >
-                            Upload File
-                          </Button>
-                        </Col>
-                      </Row>
-                    </div>
-                  )}
-                </Container>
-                <br></br>
-                {selectedPunchcard && (
-                  <Container rounded title="Send Punchcard">
-                    <TextArea
-                      label="Enther Address"
-                      type="text"
-                      value={sendAddress}
-                      onChange={(e) =>
-                        this.setState({ sendAddress: e.target.value })
-                      }
-                    />
-                    <Button
-                      error
-                      style={{ "margin-top": "20px" }}
-                      onClick={(e) => this.sendPunchcard(e)}
-                    >
-                      Send Punchcard
-                    </Button>
+
+            {nOwnedPunchcards > 0 || pendingTx.length > 0 ? (
+              <Row>
+                <Col>
+                  <Container rounded title="My Punchcards">
+                    {punchcardList}
                   </Container>
-                )}
-              </Col>
-            </Row>
+                  <br></br>
+                  {pendingTx.length > 0 ? (
+                    <Container rounded title="Transactions">
+                      {transactionList}
+                    </Container>
+                  ) : null}
+                </Col>
+                <Col>
+                  <Container rounded title="Content">
+                    {selectedPunchcard &&
+                      selectedPunchcard.content == false && (
+                        <TextArea
+                          value={contentValue}
+                          onChange={(e) =>
+                            this.setState({ contentValue: e.target.value })
+                          }
+                          rows="8"
+                        />
+                      )}
+                    {selectedPunchcard && selectedPunchcard.content && (
+                      <div>
+                        <TextArea value={fileContent} disabled rows="8" />
+                        <br></br>
+                        <br></br>
+                        <a
+                          href={ipfsBaseUri + selectedPunchcard.content}
+                          target="_blank"
+                        >
+                          IPFS URL
+                        </a>
+                        <br></br>
+                        <br></br>
+                      </div>
+                    )}
+                    {selectedPunchcard && selectedPunchcard.isSet == false && (
+                      <div>
+                        <br></br>
+                        <Button
+                          warning
+                          onClick={(e) =>
+                            selectedPunchcard.isSet == false &&
+                            this.uploadTextIPFS(e)
+                          }
+                          disabled={
+                            selectedPunchcard && selectedPunchcard.isSet
+                          }
+                        >
+                          Upload Text
+                        </Button>
+                        <br></br>
+                        <br></br>
+                      </div>
+                    )}
+                  </Container>
+                  <br></br>
+                  {selectedPunchcard && (
+                    <Container rounded title="Send Punchcard">
+                      <TextArea
+                        label="Enther Address"
+                        type="text"
+                        value={sendAddress}
+                        onChange={(e) =>
+                          this.setState({ sendAddress: e.target.value })
+                        }
+                      />
+                      <Button
+                        error
+                        style={{ "margin-top": "20px" }}
+                        onClick={(e) => this.sendPunchcard(e)}
+                      >
+                        Send Punchcard
+                      </Button>
+                    </Container>
+                  )}
+                </Col>
+              </Row>
+            ) : (
+              <div></div>
+            )}
           </div>
         )}
       </div>

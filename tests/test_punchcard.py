@@ -6,10 +6,6 @@ def test_freemint(punchcard, accounts):
     punchcard.claimFreeToken({'from': accounts[0]})
     assert punchcard.balanceOf(accounts[0]) == 1
 
-def test_freemintEnded(freeexpired_punchcard, accounts):
-    with brownie.reverts("Free mint period has ended"):
-        freeexpired_punchcard.claimFreeToken({'from': accounts[0]})
-
 def test_freemint(punchcard, accounts):
     punchcard.claimFreeToken({'from': accounts[0]})
     tokenId = punchcard.tokenOfOwnerByIndex(accounts[0], 0)

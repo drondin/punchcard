@@ -13,23 +13,17 @@ contract Punchcard is ERC721, ERC721Enumerable, Pausable, Ownable {
     uint256 _numberMintedFree = 0;
     uint256 _mintPrice;
     string _baseURIValue;
-    uint256 _saleStart;
-    uint256 _freeMintStartOffset;
-    uint256 _freeMintEndOffset;
     mapping(address => bool) private _freeMints;
     mapping(uint256 => string) private _content;
     mapping(uint256 => bool) private _contentSet;
 
     event SetContent(address indexed owner, uint256 indexed tokenId, string indexed content );
 
-    constructor(uint256 saleStart_, string memory baseURIVal_)
+    constructor(string memory baseURIVal_)
         ERC721("Punchcard", "PUNCH")
     {
         _baseURIValue = baseURIVal_;
-        _saleStart = saleStart_;
         _mintPrice = 0.01 ether;
-        _freeMintStartOffset = 0;
-        _freeMintEndOffset = 60 * 60 * 24;
     }
 
     function _baseURI() internal view override returns (string memory) {
@@ -42,53 +36,6 @@ contract Punchcard is ERC721, ERC721Enumerable, Pausable, Ownable {
 
     function unpause() public onlyOwner {
         _unpause();
-    }
-
-    function saleStart() public view returns (uint256) {
-        return _saleStart;
-    }
-
-    function freeMintStart() public view returns (uint256) {
-        return _saleStart.sub(_freeMintStartOffset);
-    }
-
-    function freeMintEnd() public view returns (uint256) {
-        return _saleStart.add(_freeMintEndOffset);
-    }
-
-    function setSaleStart(uint256 saleStart_) public onlyOwner {
-        _saleStart = saleStart_;
-    }
-
-    function saleHasStarted() public view returns (bool) {
-        return _saleStart <= block.timestamp;
-    }
-
-    modifier ensureSaleHasStarted() {
-        require(saleHasStarted(), "Sale has not started yet");
-        _;
-    }
-
-    modifier freeMintHasStarted() {
-        require(_afterFreeMintStart(), "Free mint period has not started yet");
-        _;
-    }
-
-    modifier freeMintHasNotEnded() {
-        require(_beforeFreeMintEnd(), "Free mint period has ended");
-        _;
-    }
-
-    function _afterFreeMintStart() private view returns (bool) {
-        return freeMintStart() <= block.timestamp;
-    }
-
-    function _beforeFreeMintEnd() private view returns (bool) {
-        return freeMintEnd() > block.timestamp;
-    }
-
-    function freeMintPeriodActive() public view returns (bool) {
-        return (_afterFreeMintStart() && _beforeFreeMintEnd());
     }
 
     function baseURI() public view returns (string memory) {
@@ -152,7 +99,6 @@ contract Punchcard is ERC721, ERC721Enumerable, Pausable, Ownable {
         public
         payable
         whenNotPaused
-        ensureSaleHasStarted
         validatePurchasePrice(numberOfTokens)
     {
         _mintTokens(numberOfTokens);
@@ -161,8 +107,6 @@ contract Punchcard is ERC721, ERC721Enumerable, Pausable, Ownable {
     function claimFreeToken()
         public
         whenNotPaused
-        freeMintHasStarted
-        freeMintHasNotEnded
     {
         require(!_freeMints[msg.sender], "Free token has already been claimed");
         _freeMints[msg.sender] = true;
