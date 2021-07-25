@@ -27,14 +27,14 @@ class App extends Component {
     mintedFree: true,
     nOwnedPunchcards: 0,
     ownedPunchcards: [],
-    mintValue: 1,
+    mintValue: 5,
     contentValue: "",
     selectedPunchcard: null,
     ipfsBaseUri: null,
     fileContent: "",
     sendAddress: null,
     walletConnected: false,
-    pendingTx: [],
+    pendingTx: []
   };
 
   componentDidMount = async () => {
@@ -135,7 +135,7 @@ class App extends Component {
       nOwnedPunchcards > 0
     ) {
       initialPunchcard = ownedPunchcards[0];
-    } else if (nOwnedPunchcards == 0) {
+    } else if (nOwnedPunchcards === 0) {
       initialPunchcard = null;
     }
 
@@ -148,13 +148,10 @@ class App extends Component {
   };
 
   loadInitialContracts = async () => {
-    if (this.state.chainid <= 42) {
-      // Wrong Network!
-      return;
-    }
+    const punchcard = await this.loadContract("1", "Punchcard");
 
     //mumbai
-    const punchcard = await this.loadContract("80001", "Punchcard");
+    //const punchcard = await this.loadContract("80001", "Punchcard");
     //const punchcard = await this.loadContract("dev", "Punchcard");
 
     if (!punchcard) {
@@ -167,7 +164,7 @@ class App extends Component {
     this.setState({
       punchcard,
       ipfsclient,
-      ipfsBaseUri,
+      ipfsBaseUri
     });
 
     if (this.state.accounts.length > 0) {
@@ -216,7 +213,7 @@ class App extends Component {
 
         newPendingTx.push({
           tx: transactionHash,
-          msg: "Minting free punchcard",
+          msg: "Minting free Punched Card",
         });
 
         this.setState({
@@ -225,7 +222,7 @@ class App extends Component {
       })
       .on("receipt", async (receipt) => {
         let newPendingTx = pendingTx.filter(function (itm) {
-          return itm.tx != receipt.transactionHash;
+          return itm.tx !== receipt.transactionHash;
         });
 
         this.setState({
@@ -242,14 +239,14 @@ class App extends Component {
       .mintTokens(mintValue)
       .send({
         from: accounts[0],
-        value: mintValue * web3.utils.toWei("0.01", "ether"),
+        value: mintValue * web3.utils.toWei("0.001", "ether"),
       })
       .on("transactionHash", async (transactionHash) => {
         let newPendingTx = pendingTx;
 
         newPendingTx.push({
           tx: transactionHash,
-          msg: "Minting punchcards",
+          msg: "Minting Punched Cards",
         });
 
         this.setState({
@@ -260,12 +257,12 @@ class App extends Component {
         console.log("minted punchards");
 
         let newPendingTx = pendingTx.filter(function (itm) {
-          return itm.tx != receipt.transactionHash;
+          return itm.tx !== receipt.transactionHash;
         });
 
         this.setState({
           pendingTx: newPendingTx,
-          mintValue: 1,
+          mintValue: 5,
         });
         this.loadData();
       });
@@ -282,7 +279,7 @@ class App extends Component {
 
         newPendingTx.push({
           tx: transactionHash,
-          msg: "Sending punchcard",
+          msg: "Sending Punched Card",
         });
 
         this.setState({
@@ -291,7 +288,7 @@ class App extends Component {
       })
       .on("receipt", async (receipt) => {
         let newPendingTx = pendingTx.filter(function (itm) {
-          return itm.tx != receipt.transactionHash;
+          return itm.tx !== receipt.transactionHash;
         });
 
         this.setState({
@@ -315,7 +312,7 @@ class App extends Component {
 
         newPendingTx.push({
           tx: transactionHash,
-          msg: "Sending punchcard",
+          msg: "Sending Punched Card",
         });
 
         this.setState({
@@ -324,7 +321,7 @@ class App extends Component {
       })
       .on("receipt", async (receipt) => {
         let newPendingTx = pendingTx.filter(function (itm) {
-          return itm.tx != receipt.transactionHash;
+          return itm.tx !== receipt.transactionHash;
         });
 
         this.setState({
@@ -348,12 +345,12 @@ class App extends Component {
       sendAddress,
       walletConnected,
       fileContent,
-      pendingTx,
+      pendingTx
     } = this.state;
 
     const transactionList = pendingTx.map((d) => (
       <li key={d.tx}>
-        <a target="_blank" href={"https://etherscan.io/tx/" + d.tx}>{d.msg}</a>
+        <a target="_blank" rel="noopener noreferrer" href={"https://etherscan.io/tx/" + d.tx}>{d.msg}</a>
       </li>
     ));
 
@@ -375,7 +372,7 @@ class App extends Component {
         }}
         style={{ margin: "1rem", color: d === selectedPunchcard && "#007bff" }}
       >
-        Punchcard {d.id} - <Icon icon="star" empty={d.isSet === false} small />
+        Punched Card {d.id} - <Icon icon="star" empty={d.isSet === false} small />
       </li>
     ));
 
@@ -396,20 +393,18 @@ class App extends Component {
           rel="stylesheet"
         />
 
-        <h2>Punchcard.eth</h2>
+        <h2>Punchedcard.eth</h2>
         <br></br>
         <Container dark title="What is this?">
           You ever wanted to send a message to another wallet or save a document
-          forever? <br></br> <br></br> You are in the right place.{" "}
+          forever? <br></br> <br></br> Mint NFTs wiht text saved on IPFS {" "}
           <Icon icon="heart" />
           <br></br>
           <br></br>
-          Made by <a target="_blank" href="https://twitter.com/drondin0x">@drondin0x</a>{" "}
-          repository{" "}
-          <a target="_blank" href="https://github.com/drondin/punchcard">Punchcard</a>
+          Made by <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/drondin0x">@drondin0x</a>
         </Container>
         <br></br>
-        {!walletConnected || accounts.length == 0 ? (
+        {!walletConnected || accounts.length === 0 ? (
           <Container rounded>
             <Button success onClick={(e) => this.initApp()}>
               Connect with Metamask.
@@ -420,14 +415,14 @@ class App extends Component {
             <Container rounded>
               <strong>
                 Connected with account{" "}
-                <a target="_blank" href={"https://etherscan.io/address/" + accounts[0]}>
+                <a target="_blank" rel="noopener noreferrer" href={"https://etherscan.io/address/" + accounts[0]}>
                   {" "}
                   {accounts[0]}{" "}
                 </a>
               </strong>
             </Container>
             <br></br>
-            <Container rounded title="Mint Punchcard">
+            <Container rounded title="Mint Punched Card">
               <Row>
                 <Col>
                   {!isAccountsUnlocked || mintedFree ? (
@@ -441,7 +436,7 @@ class App extends Component {
                         fromLeft
                       >
                         <TextInput
-                          label="How many Punchcards do you want?"
+                          label="How many Punched Cards do you want?"
                           placeholder="Text placeholder"
                           type="number"
                           value={mintValue}
@@ -451,7 +446,7 @@ class App extends Component {
                         />
                         <br></br>
                         <Button success onClick={(e) => this.mintPunchcards(e)}>
-                          Mint {mintValue} punchcards
+                          Mint {mintValue} punched cards
                         </Button>
                       </Balloon>
                     </div>
@@ -471,7 +466,7 @@ class App extends Component {
                         <br></br>
                         <br></br>
                         <Button success onClick={(e) => this.mintFree(e)}>
-                          Mint free punchcard
+                          Mint free punched card
                         </Button>
                       </Balloon>
                     </div>
@@ -482,19 +477,19 @@ class App extends Component {
                   <div style={{ textAlign: "left" }}>
                     <Icon icon="like" small />
                     <span style={{ marginLeft: "5px" }}>
-                      You can mint as many punchcards as you want
+                      You can mint as many Punched Cards as you want
                     </span>
                     <br></br>
                     <br></br>
                     <Icon icon="like" small />
                     <span style={{ marginLeft: "5px" }}>
-                      Each Punchcard costs 0.01 Ether
+                      Each Punched Card costs 0.001 Ether
                     </span>
                     <br></br>
                     <br></br>
                     <Icon icon="like" small />
                     <span style={{ marginLeft: "5px" }}>
-                      You can set the content of a punchcard only 1 time
+                      You can set the content of a Punched Card only 1 time
                     </span>
                     <br></br>
                     <br></br>
@@ -511,7 +506,7 @@ class App extends Component {
             {nOwnedPunchcards > 0 || pendingTx.length > 0 ? (
               <Row>
                 <Col>
-                  <Container rounded title="My Punchcards">
+                  <Container rounded title="My Punched Cards">
                     {punchcardList}
                   </Container>
                   <br></br>
@@ -524,7 +519,7 @@ class App extends Component {
                 <Col>
                   <Container rounded title="Content">
                     {selectedPunchcard &&
-                      selectedPunchcard.content == false && (
+                      selectedPunchcard.isSet === false && (
                         <TextArea
                           value={contentValue}
                           onChange={(e) =>
@@ -533,7 +528,7 @@ class App extends Component {
                           rows="8"
                         />
                       )}
-                    {selectedPunchcard && selectedPunchcard.content && (
+                    {selectedPunchcard && selectedPunchcard.isSet && (
                       <div>
                         <TextArea value={fileContent} disabled rows="8" />
                         <br></br>
@@ -541,6 +536,7 @@ class App extends Component {
                         <a
                           href={ipfsBaseUri + selectedPunchcard.content}
                           target="_blank"
+                          rel="noopener noreferrer"
                         >
                           IPFS URL
                         </a>
@@ -548,20 +544,20 @@ class App extends Component {
                         <br></br>
                       </div>
                     )}
-                    {selectedPunchcard && selectedPunchcard.isSet == false && (
+                    {selectedPunchcard && selectedPunchcard.isSet === false && (
                       <div>
                         <br></br>
                         <Button
                           warning
                           onClick={(e) =>
-                            selectedPunchcard.isSet == false &&
+                            selectedPunchcard.isSet === false &&
                             this.uploadTextIPFS(e)
                           }
                           disabled={
                             selectedPunchcard && selectedPunchcard.isSet
                           }
                         >
-                          Upload Text
+                          Set Content {selectedPunchcard.id}
                         </Button>
                         <br></br>
                         <br></br>
@@ -570,7 +566,7 @@ class App extends Component {
                   </Container>
                   <br></br>
                   {selectedPunchcard && (
-                    <Container rounded title="Send Punchcard">
+                    <Container rounded title="Send Punched Card">
                       <TextArea
                         label="Enther Address"
                         type="text"
@@ -584,7 +580,7 @@ class App extends Component {
                         style={{ "margin-top": "20px" }}
                         onClick={(e) => this.sendPunchcard(e)}
                       >
-                        Send Punchcard
+                        Send Punchcard {selectedPunchcard.id}
                       </Button>
                     </Container>
                   )}

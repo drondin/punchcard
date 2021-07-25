@@ -23,7 +23,7 @@ contract Punchcard is ERC721, ERC721Enumerable, Pausable, Ownable {
         ERC721("Punchcard", "PUNCH")
     {
         _baseURIValue = baseURIVal_;
-        _mintPrice = 0.01 ether;
+        _mintPrice = 0.001 ether;
     }
 
     function _baseURI() internal view override returns (string memory) {
