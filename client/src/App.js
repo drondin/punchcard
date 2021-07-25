@@ -393,7 +393,7 @@ class App extends Component {
           rel="stylesheet"
         />
 
-        <h2>Punchedcard.eth</h2>
+        <h2>Punchedcard.eth.link</h2>
         <br></br>
         <Container dark title="What is this?">
           You ever wanted to send a message to another wallet or save a document
