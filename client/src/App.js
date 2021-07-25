@@ -34,7 +34,9 @@ class App extends Component {
     fileContent: "",
     sendAddress: null,
     walletConnected: false,
-    pendingTx: []
+    pendingTx: [],
+    chainError: false,
+    chainExplorer: null
   };
 
   componentDidMount = async () => {
@@ -66,6 +68,18 @@ class App extends Component {
     // Get the current chain id
     const chainid = parseInt(await web3.eth.getChainId());
 
+    let chainExplorer = null;
+
+    if(chainid===1){
+      chainExplorer = "https://etherscan.io"
+    }
+    else if(chainid===100){
+      chainExplorer = "https://blockscout.com/xdai/mainnet"
+    }
+    else if(chainid===137){
+      chainExplorer = "https://polygonscan.com"
+    }
+
     if (window.ethereum) {
       window.ethereum.on("accountsChanged", function (accounts) {
         window.location.reload();
@@ -78,6 +92,7 @@ class App extends Component {
         accounts,
         chainid,
         walletConnected,
+        chainExplorer
       },
       await this.loadInitialContracts
     );
@@ -148,8 +163,16 @@ class App extends Component {
   };
 
   loadInitialContracts = async () => {
-    const punchcard = await this.loadContract("1", "Punchcard");
+    const { chainid } = this.state;
 
+    const punchcard = await this.loadContract(chainid.toString(), "Punchcard");
+
+    if (chainid!==1 && chainid!==137 && chainid!==100) {
+      this.setState({
+        chainError: true
+      });
+      return
+    }
     //mumbai
     //const punchcard = await this.loadContract("80001", "Punchcard");
     //const punchcard = await this.loadContract("dev", "Punchcard");
@@ -345,12 +368,14 @@ class App extends Component {
       sendAddress,
       walletConnected,
       fileContent,
-      pendingTx
+      pendingTx,
+      chainError,
+      chainExplorer
     } = this.state;
 
     const transactionList = pendingTx.map((d) => (
       <li key={d.tx}>
-        <a target="_blank" rel="noopener noreferrer" href={"https://etherscan.io/tx/" + d.tx}>{d.msg}</a>
+        <a target="_blank" rel="noopener noreferrer" href={chainExplorer+ "/tx/" + d.tx}>{d.msg}</a>
       </li>
     ));
 
@@ -401,21 +426,24 @@ class App extends Component {
           <Icon icon="heart" />
           <br></br>
           <br></br>
-          Made by <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/drondin0x">@drondin0x</a>
+          Made by <a target="_blank" rel="noopener noreferrer" href="https://twitter.com/drondin0x">@drondin0x</a> on Ethereum, xDAI and Polygon.
         </Container>
         <br></br>
-        {!walletConnected || accounts.length === 0 ? (
+        {!walletConnected || accounts.length === 0 || chainError ? (
           <Container rounded>
             <Button success onClick={(e) => this.initApp()}>
               Connect with Metamask.
             </Button>
+            <br></br>
+            <br></br>
+            Only available on Ethereum, Polygon or xDai.
           </Container>
         ) : (
           <div>
             <Container rounded>
               <strong>
                 Connected with account{" "}
-                <a target="_blank" rel="noopener noreferrer" href={"https://etherscan.io/address/" + accounts[0]}>
+                <a target="_blank" rel="noopener noreferrer" href={chainExplorer+"/address/" + accounts[0]}>
                   {" "}
                   {accounts[0]}{" "}
                 </a>
