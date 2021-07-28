@@ -24,5 +24,6 @@ dev_deployment_artifacts: true
 
 compiler:
   solc:
+    version: 0.8.3
     remappings:
       - "@openzeppelin=OpenZeppelin/openzeppelin-contracts@4.2.0"

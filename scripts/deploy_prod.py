@@ -5,5 +5,5 @@ import os
 
 def main():
     network = accounts.add(os.getenv(config['wallets']['from_key']))
-    punchcard = Punchcard.deploy("https://ipfs.io/ipfs/", {'from': network})
+    punchcard = Punchcard.deploy("https://ipfs.io/ipfs/", {'from': network}, publish_source=True)
     return punchcard
