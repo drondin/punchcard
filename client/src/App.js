@@ -165,9 +165,11 @@ class App extends Component {
   loadInitialContracts = async () => {
     const { chainid } = this.state;
 
-    const punchcard = await this.loadContract(chainid.toString(), "Punchcard");
+    let chain = chainid === 1337 ? "dev" : chainid.toString();
 
-    if (chainid!==1 && chainid!==137 && chainid!==100) {
+    const punchcard = await this.loadContract(chain, "Punchcard");
+
+    if (chainid!==1 && chainid!==137 && chainid!==100 && chainid!==1337) {
       this.setState({
         chainError: true
       });
