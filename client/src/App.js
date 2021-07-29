@@ -36,7 +36,9 @@ class App extends Component {
     walletConnected: false,
     pendingTx: [],
     chainError: false,
-    chainExplorer: null
+    chainExplorer: null,
+    mintPrice: null,
+    tokenName: null
   };
 
   componentDidMount = async () => {
@@ -69,15 +71,19 @@ class App extends Component {
     const chainid = parseInt(await web3.eth.getChainId());
 
     let chainExplorer = null;
+    let tokenName = null;
 
-    if(chainid===1){
+    if(chainid===1 || chainid===1337){
       chainExplorer = "https://etherscan.io"
+      tokenName = "Ether"
     }
     else if(chainid===100){
       chainExplorer = "https://blockscout.com/xdai/mainnet"
+      tokenName = "DAI"
     }
     else if(chainid===137){
       chainExplorer = "https://polygonscan.com"
+      tokenName = "Matic"
     }
 
     if (window.ethereum) {
@@ -92,7 +98,8 @@ class App extends Component {
         accounts,
         chainid,
         walletConnected,
-        chainExplorer
+        chainExplorer,
+        tokenName
       },
       await this.loadInitialContracts
     );
@@ -163,7 +170,7 @@ class App extends Component {
   };
 
   loadInitialContracts = async () => {
-    const { chainid } = this.state;
+    const { chainid, web3 } = this.state;
 
     let chain = chainid === 1337 ? "dev" : chainid.toString();
 
@@ -175,21 +182,22 @@ class App extends Component {
       });
       return
     }
-    //mumbai
-    //const punchcard = await this.loadContract("80001", "Punchcard");
-    //const punchcard = await this.loadContract("dev", "Punchcard");
 
     if (!punchcard) {
-      return;
+      alert("Make sure you are on the right network ETH, xDAI or Polygon")
     }
 
     const ipfsBaseUri = await punchcard.methods.baseURI().call();
     const ipfsclient = create("https://ipfs.infura.io:5001/api/v0");
 
+    const mintPriceWei = await punchcard.methods.mintPrice().call();
+    const mintPrice = web3.utils.fromWei(mintPriceWei, 'ether');
+
     this.setState({
       punchcard,
       ipfsclient,
-      ipfsBaseUri
+      ipfsBaseUri,
+      mintPrice
     });
 
     if (this.state.accounts.length > 0) {
@@ -258,13 +266,13 @@ class App extends Component {
   };
 
   mintPunchcards = async (e) => {
-    const { accounts, punchcard, mintValue, pendingTx, web3 } = this.state;
+    const { accounts, punchcard, mintValue, pendingTx, web3, mintPrice } = this.state;
 
     await punchcard.methods
       .mintTokens(mintValue)
       .send({
         from: accounts[0],
-        value: mintValue * web3.utils.toWei("0.001", "ether"),
+        value: mintValue * web3.utils.toWei(mintPrice.toString(), "ether"),
       })
       .on("transactionHash", async (transactionHash) => {
         let newPendingTx = pendingTx;
@@ -372,7 +380,9 @@ class App extends Component {
       fileContent,
       pendingTx,
       chainError,
-      chainExplorer
+      chainExplorer,
+      mintPrice,
+      tokenName
     } = this.state;
 
     const transactionList = pendingTx.map((d) => (
@@ -513,7 +523,7 @@ class App extends Component {
                     <br></br>
                     <Icon icon="like" small />
                     <span style={{ marginLeft: "5px" }}>
-                      Each Punched Card costs 0.001 Ether
+                      Each Punched Card costs {mintPrice} {tokenName}
                     </span>
                     <br></br>
                     <br></br>
